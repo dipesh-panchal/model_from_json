@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:model_from_json/model_from_json.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
 
 void main(List<String> args) {
   _printBanner();
@@ -66,10 +67,25 @@ void main(List<String> args) {
 // ============================================================
 // ✅ CLI HELPERS
 // ============================================================
+String _getPackageVersion() {
+  try {
+    final pubspecFile = File('pubspec.yaml');
+
+    if (!pubspecFile.existsSync()) return "unknown";
+
+    final content = pubspecFile.readAsStringSync();
+    final pubspec = Pubspec.parse(content);
+
+    return pubspec.version?.toString() ?? "unknown";
+  } catch (_) {
+    return "unknown";
+  }
+}
 
 void _printBanner() {
+  final version = _getPackageVersion();
   print("────────────────────────────────────────────");
-  print("🚀 Model From JSON Generator v1.0.2");
+  print("🚀 Model From JSON Generator v$version");
   print("────────────────────────────────────────────\n");
 }
 
