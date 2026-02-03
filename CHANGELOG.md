@@ -1,4 +1,4 @@
-## 1.0.0 — Initial Release (2026-02-03)
+## 1.0.1 — Initial Release (2026-02-03)
 
 🎉 First public release of **model_from_json**.
 

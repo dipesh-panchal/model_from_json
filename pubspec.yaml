@@ -1,8 +1,10 @@
 name: model_from_json
-description: A sample command-line application.
-version: 1.0.0
-homepage: https://github.com/<yourusername>/model_from_json
-repository: https://github.com/<yourusername>/model_from_json
+description: >
+  A Dart CLI tool that generates Equatable-ready Dart model classes
+  directly from JSON files, with support for nested objects, lists,
+  and automatic fromJson/toJson methods.
+version: 1.0.1
+repository: https://github.com/dipesh-panchal/model_from_json
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
