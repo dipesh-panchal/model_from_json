@@ -49,7 +49,7 @@ void main(List<String> args) {
   // -----------------------------
   // 5. Write Output File
   // -----------------------------
-  final outputFile = "${className.toLowerCase()}.dart";
+  final outputFile = "${camelToSnake(className)}.dart";
 
   File(outputFile).writeAsStringSync(code);
 
@@ -67,11 +67,21 @@ String generateModel(String className, Map<String, dynamic> json) {
   buffer.writeln("import 'package:equatable/equatable.dart';\n");
 
   // Convert JSON keys → Dart fields
-  final fields = <String, String>{};
+  final fields = <Map<String, String>>[];
 
   for (final entry in json.entries) {
-    final fieldName = snakeToCamel(entry.key);
-    fields[entry.key] = fieldName;
+    final jsonKey = entry.key;
+    final fieldName = snakeToCamel(jsonKey);
+
+    final dartType = inferDartType(entry.value);
+    final defaultValue = inferDefaultValue(entry.value);
+
+    fields.add({
+      "jsonKey": jsonKey,
+      "fieldName": fieldName,
+      "dartType": dartType,
+      "default": defaultValue,
+    });
   }
 
   // -----------------------------
@@ -80,15 +90,16 @@ String generateModel(String className, Map<String, dynamic> json) {
   buffer.writeln("class $className extends Equatable {");
 
   // Fields
-  for (final field in fields.values) {
-    buffer.writeln("  final String $field;");
+  for (final field in fields) {
+    buffer.writeln("  final ${field["dartType"]} ${field["fieldName"]};");
   }
 
   // Constructor
   buffer.writeln("\n  const $className({");
-  for (final field in fields.values) {
-    buffer.writeln("    required this.$field,");
+  for (final field in fields) {
+    buffer.writeln("    required this.${field["fieldName"]},");
   }
+
   buffer.writeln("  });");
 
   // fromJson
@@ -97,9 +108,9 @@ String generateModel(String className, Map<String, dynamic> json) {
   );
   buffer.writeln("    return $className(");
 
-  for (final entry in fields.entries) {
+  for (final field in fields) {
     buffer.writeln(
-      "      ${entry.value}: json['${entry.key}'] as String? ?? '',",
+      "      ${field["fieldName"]}: json['${field["jsonKey"]}'] as ${field["dartType"]}? ?? ${field["default"]},",
     );
   }
 
@@ -109,8 +120,8 @@ String generateModel(String className, Map<String, dynamic> json) {
   // toJson
   buffer.writeln("\n  Map<String, dynamic> toJson() => {");
 
-  for (final entry in fields.entries) {
-    buffer.writeln("        '${entry.key}': ${entry.value},");
+  for (final field in fields) {
+    buffer.writeln("        '${field["jsonKey"]}': ${field["fieldName"]},");
   }
 
   buffer.writeln("      };");
@@ -119,15 +130,15 @@ String generateModel(String className, Map<String, dynamic> json) {
   buffer.writeln("\n  @override");
   buffer.writeln("  String toString() =>");
   buffer.writeln(
-    "      '$className(${fields.values.map((f) => "$f: \$$f").join(", ")})';",
+    "      '$className(${fields.map((f) => "${f["fieldName"]}: \$${f["fieldName"]}").join(", ")})';",
   );
 
   // props
   buffer.writeln("\n  @override");
   buffer.writeln("  List<Object> get props => [");
 
-  for (final field in fields.values) {
-    buffer.writeln("        $field,");
+  for (final field in fields) {
+    buffer.writeln("        ${field["fieldName"]},");
   }
 
   buffer.writeln("      ];");
@@ -149,4 +160,31 @@ String snakeToCamel(String input) {
           .skip(1)
           .map((word) => word[0].toUpperCase() + word.substring(1))
           .join();
+}
+
+String camelToSnake(String input) {
+  return input
+      .replaceAllMapped(
+        RegExp(r'[A-Z]'),
+        (match) => '_${match.group(0)!.toLowerCase()}',
+      )
+      .replaceFirst('_', '');
+}
+
+String inferDartType(dynamic value) {
+  if (value is int) return "int";
+  if (value is double) return "double";
+  if (value is bool) return "bool";
+  if (value is List) return "List";
+  if (value is Map) return "Map<String, dynamic>";
+  return "String";
+}
+
+String inferDefaultValue(dynamic value) {
+  if (value is int) return "0";
+  if (value is double) return "0.0";
+  if (value is bool) return "false";
+  if (value is List) return "const []";
+  if (value is Map) return "const {}";
+  return "''";
 }
