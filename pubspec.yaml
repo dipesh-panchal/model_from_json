@@ -3,7 +3,7 @@ description: >
   A Dart CLI tool that generates Equatable-ready Dart model classes
   directly from JSON files, with support for nested objects, lists,
   and automatic fromJson/toJson methods.
-version: 1.0.1
+version: 1.0.2
 repository: https://github.com/dipesh-panchal/model_from_json
 
 environment:
