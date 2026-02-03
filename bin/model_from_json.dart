@@ -1,12 +1,50 @@
 import 'dart:convert';
 import 'dart:io';
 
+/// ============================================================
+/// ✅ MODEL FROM JSON GENERATOR
+/// ============================================================
+///
+/// This tool generates Dart Equatable model classes automatically
+/// from a JSON file.
+///
+/// Features Supported:
+/// ------------------------------------------------------------
+/// ✅ Primitive Types: String, int, double, bool
+/// ✅ List Types: List<String>, List<int>, List<bool>, etc.
+/// ✅ Nested Objects: Generates separate model files recursively
+/// ✅ List of Nested Objects: Generates List<ChildModel>
+/// ✅ Multi-file Output: Writes all models into separate .dart files
+///
+/// Example:
+/// ------------------------------------------------------------
+/// Input JSON:
+///
+/// {
+///   "id": 1,
+///   "profile": { "name": "Dipesh" },
+///   "addresses": [ { "city": "Mumbai" } ]
+/// }
+///
+/// Output Files:
+/// ------------------------------------------------------------
+/// user_model.dart
+/// profile.dart
+/// addresses.dart
+///
+/// ============================================================
+
+/// ✅ Global registry that stores all generated model code
+/// Key   = filename (snake_case)
+/// Value = Dart model source code
+final Map<String, String> generatedModels = {};
+
 void main(List<String> args) {
   print("🚀 Model From JSON Generator");
 
-  // -----------------------------
-  // 1. Validate input arguments
-  // -----------------------------
+  // ============================================================
+  // 1️⃣ Validate CLI Arguments
+  // ============================================================
   if (args.isEmpty) {
     print("\nUsage:");
     print("  dart run model_from_json <json_path> --name ClassName");
@@ -22,11 +60,11 @@ void main(List<String> args) {
     exit(1);
   }
 
-  final className = args[nameIndex + 1];
+  final rootClassName = args[nameIndex + 1];
 
-  // -----------------------------
-  // 2. Read JSON file
-  // -----------------------------
+  // ============================================================
+  // 2️⃣ Read JSON File
+  // ============================================================
   final file = File(jsonPath);
 
   if (!file.existsSync()) {
@@ -36,45 +74,90 @@ void main(List<String> args) {
 
   final jsonString = file.readAsStringSync();
 
-  // -----------------------------
-  // 3. Decode JSON
-  // -----------------------------
+  // ============================================================
+  // 3️⃣ Decode JSON
+  // ============================================================
   final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
 
-  // -----------------------------
-  // 4. Generate Dart Model Code
-  // -----------------------------
-  final code = generateModel(className, jsonMap);
+  // ============================================================
+  // 4️⃣ Generate Models Recursively
+  // ============================================================
+  generateModel(rootClassName, jsonMap);
 
-  // -----------------------------
-  // 5. Write Output File
-  // -----------------------------
-  final outputFile = "${camelToSnake(className)}.dart";
+  // ============================================================
+  // 5️⃣ Write Output Files
+  // ============================================================
+  print("\n✅ Models generated:\n");
 
-  File(outputFile).writeAsStringSync(code);
+  for (final entry in generatedModels.entries) {
+    File(entry.key).writeAsStringSync(entry.value);
+    print("📄 ${entry.key}");
+  }
 
-  print("\n✅ Model generated successfully!");
-  print("📄 Output: $outputFile\n");
+  print("\n🎉 Done!\n");
 }
 
-// ============================================================
-// MODEL GENERATOR
-// ============================================================
-
-String generateModel(String className, Map<String, dynamic> json) {
+/// ============================================================
+/// ✅ Recursive Model Generator
+/// ============================================================
+///
+/// - Generates Dart model class for given JSON Map
+/// - Recursively generates nested objects
+/// - Stores all output into `generatedModels` map
+///
+/// ============================================================
+void generateModel(String className, Map<String, dynamic> json) {
   final buffer = StringBuffer();
 
-  buffer.writeln("import 'package:equatable/equatable.dart';\n");
+  /// Convert class name → filename
+  final fileName = "${camelToSnake(className)}.dart";
 
-  // Convert JSON keys → Dart fields
+  /// Prevent duplicate generation
+  if (generatedModels.containsKey(fileName)) return;
+
+  // ============================================================
+  // 1️⃣ Extract Fields
+  // ============================================================
   final fields = <Map<String, String>>[];
 
   for (final entry in json.entries) {
     final jsonKey = entry.key;
+
+    /// Convert JSON key → Dart field name
     final fieldName = snakeToCamel(jsonKey);
 
-    final dartType = inferDartType(entry.value);
-    final defaultValue = inferDefaultValue(entry.value);
+    String dartType;
+    String defaultValue;
+
+    // ✅ Case 1: Nested Object → Generate separate model
+    if (entry.value is Map) {
+      final childClassName =
+          fieldName[0].toUpperCase() + fieldName.substring(1);
+
+      generateModel(childClassName, entry.value as Map<String, dynamic>);
+
+      dartType = childClassName;
+      defaultValue = "$childClassName.fromJson({})";
+    }
+    // ✅ Case 2: List of Nested Objects → List<ChildModel>
+    else if (entry.value is List &&
+        entry.value.isNotEmpty &&
+        entry.value.first is Map) {
+      /// Key name preserved exactly:
+      /// addresses → Addresses (NOT Address)
+      final childClassName =
+          fieldName[0].toUpperCase() + fieldName.substring(1);
+
+      generateModel(childClassName, entry.value.first as Map<String, dynamic>);
+
+      dartType = "List<$childClassName>";
+      defaultValue = "const []";
+    }
+    // ✅ Case 3: Primitive or List of Primitives
+    else {
+      dartType = inferDartType(entry.value);
+      defaultValue = inferDefaultValue(entry.value);
+    }
 
     fields.add({
       "jsonKey": jsonKey,
@@ -84,40 +167,92 @@ String generateModel(String className, Map<String, dynamic> json) {
     });
   }
 
-  // -----------------------------
-  // Class Header
-  // -----------------------------
+  // ============================================================
+  // 2️⃣ Imports
+  // ============================================================
+  buffer.writeln("import 'package:equatable/equatable.dart';");
+
+  for (final field in fields) {
+    final type = field["dartType"]!;
+
+    // ✅ Import nested object type
+    if (isCustomModel(type)) {
+      buffer.writeln("import '${camelToSnake(type)}.dart';");
+    }
+
+    // ✅ Import List<NestedObject>
+    if (type.startsWith("List<")) {
+      final innerType = type.replaceAll("List<", "").replaceAll(">", "");
+
+      if (isCustomModel(innerType)) {
+        buffer.writeln("import '${camelToSnake(innerType)}.dart';");
+      }
+    }
+  }
+
+  buffer.writeln("");
+
+  // ============================================================
+  // 3️⃣ Class Definition
+  // ============================================================
   buffer.writeln("class $className extends Equatable {");
 
-  // Fields
+  /// Fields
   for (final field in fields) {
     buffer.writeln("  final ${field["dartType"]} ${field["fieldName"]};");
   }
 
-  // Constructor
+  /// Constructor
   buffer.writeln("\n  const $className({");
   for (final field in fields) {
     buffer.writeln("    required this.${field["fieldName"]},");
   }
-
   buffer.writeln("  });");
 
-  // fromJson
+  // ============================================================
+  // 4️⃣ fromJson Constructor
+  // ============================================================
   buffer.writeln(
     "\n  factory $className.fromJson(Map<String, dynamic> json) {",
   );
   buffer.writeln("    return $className(");
 
   for (final field in fields) {
-    buffer.writeln(
-      "      ${field["fieldName"]}: json['${field["jsonKey"]}'] as ${field["dartType"]}? ?? ${field["default"]},",
-    );
+    final type = field["dartType"]!;
+    final key = field["jsonKey"]!;
+    final name = field["fieldName"]!;
+    final def = field["default"]!;
+
+    // ✅ Nested object
+    if (isCustomModel(type)) {
+      buffer.writeln("      $name: $type.fromJson(json['$key'] ?? {}),");
+    }
+    // ✅ List<NestedObject>
+    else if (type.startsWith("List<")) {
+      final innerType = type.replaceAll("List<", "").replaceAll(">", "");
+
+      if (isCustomModel(innerType)) {
+        buffer.writeln(
+          "      $name: (json['$key'] as List? ?? [])"
+          ".map((e) => $innerType.fromJson(e))"
+          ".toList(),",
+        );
+      } else {
+        buffer.writeln("      $name: json['$key'] as $type? ?? $def,");
+      }
+    }
+    // ✅ Primitive
+    else {
+      buffer.writeln("      $name: json['$key'] as $type? ?? $def,");
+    }
   }
 
   buffer.writeln("    );");
   buffer.writeln("  }");
 
-  // toJson
+  // ============================================================
+  // 5️⃣ toJson Method
+  // ============================================================
   buffer.writeln("\n  Map<String, dynamic> toJson() => {");
 
   for (final field in fields) {
@@ -126,14 +261,14 @@ String generateModel(String className, Map<String, dynamic> json) {
 
   buffer.writeln("      };");
 
-  // toString
+  // ============================================================
+  // 6️⃣ Equatable Overrides
+  // ============================================================
   buffer.writeln("\n  @override");
-  buffer.writeln("  String toString() =>");
   buffer.writeln(
-    "      '$className(${fields.map((f) => "${f["fieldName"]}: \$${f["fieldName"]}").join(", ")})';",
+    "  String toString() => '$className(${fields.map((f) => "${f["fieldName"]}: \$${f["fieldName"]}").join(", ")})';",
   );
 
-  // props
   buffer.writeln("\n  @override");
   buffer.writeln("  List<Object> get props => [");
 
@@ -145,36 +280,48 @@ String generateModel(String className, Map<String, dynamic> json) {
 
   buffer.writeln("}");
 
-  return buffer.toString();
+  // ✅ Store generated model file
+  generatedModels[fileName] = buffer.toString();
 }
 
 // ============================================================
-// HELPERS
+// HELPER FUNCTIONS
 // ============================================================
 
+/// Returns true if this is a user-defined generated model type
+bool isCustomModel(String type) {
+  return type[0].toUpperCase() == type[0] &&
+      type != "String" &&
+      type != "int" &&
+      type != "double" &&
+      type != "bool" &&
+      !type.startsWith("List");
+}
+
+/// Convert snake_case → camelCase
 String snakeToCamel(String input) {
   final parts = input.split('_');
 
   return parts.first +
-      parts
-          .skip(1)
-          .map((word) => word[0].toUpperCase() + word.substring(1))
-          .join();
+      parts.skip(1).map((w) => w[0].toUpperCase() + w.substring(1)).join();
 }
 
+/// Convert CamelCase → snake_case filename
 String camelToSnake(String input) {
   return input
       .replaceAllMapped(
         RegExp(r'[A-Z]'),
-        (match) => '_${match.group(0)!.toLowerCase()}',
+        (m) => '_${m.group(0)!.toLowerCase()}',
       )
       .replaceFirst('_', '');
 }
 
+/// Infer Dart type from JSON value
 String inferDartType(dynamic value) {
   if (value is int) return "int";
   if (value is double) return "double";
   if (value is bool) return "bool";
+
   if (value is List) {
     if (value.isEmpty) return "List<dynamic>";
 
@@ -184,19 +331,19 @@ String inferDartType(dynamic value) {
     if (first is int) return "List<int>";
     if (first is double) return "List<double>";
     if (first is bool) return "List<bool>";
-    if (first is Map) return "List<Map<String, dynamic>>";
 
     return "List<dynamic>";
   }
-  if (value is Map) return "Map<String, dynamic>";
+
   return "String";
 }
 
+/// Infer safe default fallback
 String inferDefaultValue(dynamic value) {
   if (value is int) return "0";
   if (value is double) return "0.0";
   if (value is bool) return "false";
   if (value is List) return "const []";
-  if (value is Map) return "const {}";
+
   return "''";
 }
