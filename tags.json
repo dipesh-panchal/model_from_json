@@ -1,0 +1,14 @@
+{
+    "tags": [
+        "flutter",
+        "dart"
+    ],
+    "scores": [
+        10,
+        20
+    ],
+    "flags": [
+        true,
+        false
+    ]
+}

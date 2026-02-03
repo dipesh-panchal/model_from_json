@@ -175,7 +175,19 @@ String inferDartType(dynamic value) {
   if (value is int) return "int";
   if (value is double) return "double";
   if (value is bool) return "bool";
-  if (value is List) return "List";
+  if (value is List) {
+    if (value.isEmpty) return "List<dynamic>";
+
+    final first = value.first;
+
+    if (first is String) return "List<String>";
+    if (first is int) return "List<int>";
+    if (first is double) return "List<double>";
+    if (first is bool) return "List<bool>";
+    if (first is Map) return "List<Map<String, dynamic>>";
+
+    return "List<dynamic>";
+  }
   if (value is Map) return "Map<String, dynamic>";
   return "String";
 }
