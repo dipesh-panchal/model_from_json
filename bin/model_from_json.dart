@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:model_from_json/generator.dart';
+import 'package:model_from_json/model_from_json.dart';
 
 void main(List<String> args) {
   _printBanner();
@@ -61,8 +61,6 @@ void main(List<String> args) {
     rootClassName: rootClassName,
     outputDir: outputDir,
   );
-
-  print("\n🎉 Finished Successfully!\n");
 }
 
 // ============================================================
