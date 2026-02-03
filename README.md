@@ -1,42 +1,90 @@
 # Model From JSON 🚀
 
-A lightweight Dart CLI tool that generates **Equatable-ready Dart model classes**
-directly from a JSON file.
+[![pub package](https://img.shields.io/pub/v/model_from_json.svg)](https://pub.dev/packages/model_from_json)
+[![likes](https://img.shields.io/pub/likes/model_from_json)](https://pub.dev/packages/model_from_json/score)
+[![popularity](https://img.shields.io/pub/popularity/model_from_json)](https://pub.dev/packages/model_from_json/score)
+[![pub points](https://img.shields.io/pub/points/model_from_json)](https://pub.dev/packages/model_from_json/score)
 
-Designed for Flutter developers who want:
+A **zero-setup Dart CLI tool** that generates clean, Equatable-ready Dart model
+classes directly from JSON.
 
-✅ Fast model generation  
-✅ Nested model support  
-✅ List of nested objects  
-✅ `fromJson()` + `toJson()` built-in  
-✅ Clean multi-file output  
-✅ Interactive CLI mode  
+✅ No annotations  
+✅ No `build_runner`  
+✅ No `.g.dart` files  
+✅ Just instant model generation  
+
+⚡ Generates models in **under 1 second** for most API JSON files — no codegen pipeline needed.
 
 ---
 
-## ✨ Features
+## ✨ Why Model From JSON?
 
-- ✅ Generates Dart model classes automatically from JSON
-- ✅ Supports nested objects (`profile`, `subscription`, etc.)
-- ✅ Supports lists of nested objects (`accounts`, `features`, etc.)
-- ✅ Produces clean, Equatable-compatible models
-- ✅ Generates multiple `.dart` files recursively
-- ✅ Supports both:
-  - Command mode
-  - Interactive mode
-- ✅ Optional output folder support (`--out`)
+Most Flutter model generators require:
+
+- Annotations (`@JsonSerializable`)
+- `build_runner` commands
+- Generated `.g.dart` part files
+- Extra boilerplate setup
+
+**model_from_json** is different:
+
+✅ Works instantly  
+✅ Outputs plain Dart files immediately  
+✅ Perfect for rapid development and API prototyping  
+
+---
+
+## 🎬 Demo
+
+Generate models instantly:
+
+```bash
+model_from_json complex.json --name ApiResponse --out lib/models
+````
+
+Output:
+
+```
+✅ Done! Generated 6 model files:
+
+📄 api_response.dart
+📄 meta.dart
+📄 user.dart
+📄 accounts.dart
+📄 subscription.dart
+📄 features.dart
+```
+
+---
+
+## ✅ Features
+
+* ✅ Generate Dart model classes automatically from JSON
+* ✅ Supports nested objects (`profile`, `subscription`, etc.)
+* ✅ Supports lists of nested objects (`accounts`, `features`, etc.)
+* ✅ Generates complete boilerplate:
+
+  * `fromJson()`
+  * `toJson()` (with nested serialization)
+  * Equatable `props`
+* ✅ Generates multiple `.dart` files recursively
+* ✅ Supports both:
+
+  * Command mode
+  * Interactive mode
+* ✅ Optional output folder support (`--out`)
 
 ---
 
 ## 📦 Installation
 
-### Activate globally (recommended)
+Activate globally:
 
 ```bash
 dart pub global activate model_from_json
-````
+```
 
-Now you can run:
+Run anywhere:
 
 ```bash
 model_from_json <json_path> --name ClassName
@@ -50,13 +98,13 @@ model_from_json <json_path> --name ClassName
 
 ### ✅ Command Mode
 
-Generate models from JSON in the current folder:
+Generate models into the current directory:
 
 ```bash
 model_from_json complex.json --name ApiResponse
 ```
 
-Generate models into a custom folder:
+Generate models into a folder:
 
 ```bash
 model_from_json complex.json --name ApiResponse --out lib/models
@@ -72,7 +120,7 @@ Run without arguments:
 model_from_json
 ```
 
-It will prompt you:
+You will be guided step-by-step:
 
 ```
 Enter JSON file path: ultra.json
@@ -88,51 +136,63 @@ Enter output folder [.] : lib/models
 
 ```json
 {
+  "meta": {
+    "request_id": "REQ-123",
+    "success": true
+  },
   "user": {
-    "id": 1,
-    "name": "Dipesh"
+    "id": 101,
+    "name": "Dipesh Panchal",
+    "roles": ["trader", "developer"]
   },
   "accounts": [
     {
       "broker": "zerodha",
-      "balance": 250000
+      "balance": 250000.75
     }
-  ]
+  ],
+  "subscription": {
+    "plan": "pro",
+    "features": [
+      {
+        "name": "nested_models",
+        "enabled": true
+      }
+    ]
+  }
 }
 ```
 
 ---
 
-## ✅ Output Generated
+## ✅ Example Output
 
 ### `api_response.dart`
 
 ```dart
 class ApiResponse extends Equatable {
+  final Meta meta;
   final User user;
   final List<Accounts> accounts;
+  final Subscription subscription;
 
   const ApiResponse({
+    required this.meta,
     required this.user,
     required this.accounts,
+    required this.subscription,
   });
 
   factory ApiResponse.fromJson(Map<String, dynamic> json) {
     return ApiResponse(
+      meta: Meta.fromJson(json['meta'] ?? {}),
       user: User.fromJson(json['user'] ?? {}),
       accounts: (json['accounts'] as List? ?? [])
           .map((e) => Accounts.fromJson(e))
           .toList(),
+      subscription: Subscription.fromJson(json['subscription'] ?? {}),
     );
   }
-
-  Map<String, dynamic> toJson() => {
-        'user': user.toJson(),
-        'accounts': accounts.map((e) => e.toJson()).toList(),
-      };
-
-  @override
-  List<Object?> get props => [user, accounts];
 }
 ```
 
@@ -140,45 +200,45 @@ class ApiResponse extends Equatable {
 
 ## 📂 Output Structure
 
-Example generated folder:
+Generated folder example:
 
 ```
 lib/models/
  ├── api_response.dart
+ ├── meta.dart
  ├── user.dart
  ├── accounts.dart
- └── broker_settings.dart
+ ├── subscription.dart
+ └── features.dart
 ```
 
 ---
 
 ## ⚙️ CLI Options
 
-| Option   | Description                |
-| -------- | -------------------------- |
-| `--name` | Root class name (required) |
-| `--out`  | Output folder (optional)   |
-| `--help` | Show usage help            |
+| Option   | Description                 |
+| -------- | --------------------------- |
+| `--name` | Root class name (required)  |
+| `--out`  | Output folder (optional)    |
+| `--help` | Show CLI usage instructions |
 
 ---
 
-## ✅ Roadmap (Upcoming)
+## ✅ Roadmap
 
-Planned improvements:
+Planned future improvements:
 
 * Nullable type inference (`String? phone`)
 * Dictionary/Map field support (`Map<String,dynamic> metadata`)
-* Better naming rules (`daily_pnl → DailyPnl`)
+* Smarter naming (`daily_pnl → DailyPnl`)
 * Barrel export generation (`models.dart`)
-* Pub.dev v1.0 stable release
+* Optional Freezed/json_serializable generation mode
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests are welcome!
-
-To contribute:
+Pull requests and improvements are welcome!
 
 ```bash
 git clone https://github.com/yourusername/model_from_json.git
@@ -197,5 +257,4 @@ MIT License © 2026 Dipesh Panchal
 
 ## ⭐ Support
 
-If you find this tool useful, consider starring the repo and sharing it with Flutter developers!
-
+If you find this tool useful, consider starring the repo and sharing it with the Flutter community 🚀
