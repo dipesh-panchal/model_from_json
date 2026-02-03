@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "request_id": "REQ-123",
+    "success": true
+  },
+  "user": {
+    "id": 101,
+    "name": "Dipesh Panchal",
+    "roles": ["trader", "developer"]
+  },
+  "accounts": [
+    {
+      "broker": "zerodha",
+      "balance": 250000.75
+    }
+  ],
+  "subscription": {
+    "plan": "pro",
+    "features": [
+      {
+        "name": "nested_models",
+        "enabled": true
+      }
+    ]
+  }
+}
